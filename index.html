@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERTIX</title>
+    <script src="https://cdn.tailwindcss.com"></script> {/* Tailwind CDN se mantiene aquí para simplicidad */}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Hoja de estilos personalizada -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK (Compat version for easier integration) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
+</head>
+<body class="text-gray-800">
+
+    <div id="loginView">
+        <div id="loginFormContainer">
+            <div class="mb-8 text-center">
+                <h1 class="text-5xl font-bold text-blue-800 leading-tight">VERTIX</h1>
+            </div>
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label for="loginUsername" class="block text-sm font-medium text-gray-700 text-left mb-1">Usuario</label>
+                    <input type="text" id="loginUsername" name="username" required class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <div class="mb-6">
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700 text-left mb-1">Contraseña</label>
+                    <input type="password" id="loginPassword" name="password" required class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <p id="loginError" class="text-red-500 text-sm mb-4"></p>
+                <button type="submit" id="loginSubmitBtn" class="w-full btn-primary py-3 px-4 rounded-md font-semibold transition duration-150">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="appContainer" class="app-container">
+        <header class="bg-blue-800 text-white p-4 md:py-5 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold leading-tight">VERTIX</h1>
+                </div>
+                <div id="logoutButtonContainer"></div>
+            </div>
+        </header>
+
+        <div class="container mx-auto p-4 md:p-6 flex-grow main-content-wrapper">
+            <div class="tab-navigation-container">
+                <ul id="appNavigationTabs" class="flex border-b border-gray-300">
+                    <li id="navCalendarTab" class="-mb-px mr-1 hidden-tab">
+                        <div id="navCalendar" class="tab-item bg-transparent text-gray-600 hover:text-blue-700 py-3 px-5 cursor-pointer font-medium rounded-t-lg">Calendario</div>
+                    </li>
+                    <li id="navAlumnosTab" class="-mb-px mr-1 hidden-tab">
+                        <div id="navAlumnos" class="tab-item bg-transparent text-gray-600 hover:text-blue-700 py-3 px-5 cursor-pointer font-medium rounded-t-lg">Alumnos</div>
+                    </li>
+                    <li id="navPackageTypesTab" class="-mb-px mr-1 hidden-tab">
+                        <div id="navPackageTypes" class="tab-item bg-transparent text-gray-600 hover:text-blue-700 py-3 px-5 cursor-pointer font-medium rounded-t-lg">Paquetes</div>
+                    </li>
+                    <li id="navStudentPortalTab" class="-mb-px mr-1 hidden-tab">
+                        <div id="navStudentPortal" class="tab-item bg-transparent text-gray-600 hover:text-blue-700 py-3 px-5 cursor-pointer font-medium rounded-t-lg">Mi Portal</div>
+                    </li>
+                </ul>
+            </div>
+
+            <main class="w-full bg-white p-6 rounded-lg shadow-lg content-area">
+                <div id="welcomeView" class="content-section active text-center py-10">
+                    <h2 class="text-3xl font-semibold text-blue-800 mb-4">¡Bienvenido/a!</h2>
+                    <p id="welcomeMainMessage" class="text-xl text-gray-500">Cargando...</p>
+                </div>
+
+                <div id="alumnosView" class="content-section">
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="md:w-1/3 space-y-6">
+                            <div>
+                                <button id="openAddStudentModalBtn" class="w-full btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150 mb-3 hover:bg-gray-300">Agregar Nuevo Alumno</button>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-medium mb-3 text-blue-700">Lista de Alumnos</h3>
+                                <input type="text" id="studentSearchInput" placeholder="Buscar alumno..." class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600 mb-3">
+                                <div class="mb-3 filter-btn-group" id="studentListFilterGroup" role="group">
+                                    <button type="button" class="filter-btn" data-filter="todos">Todos</button>
+                                    <button type="button" class="filter-btn active" data-filter="activo">Activos</button>
+                                    <button type="button" class="filter-btn" data-filter="suspendido">Suspendidos</button>
+                                    <button type="button" class="filter-btn" data-filter="inactivo">Inactivos</button>
+                                </div>
+                                <ul id="studentsList" class="space-y-2"></ul>
+                            </div>
+                        </div>
+                        <div class="md:w-2/3">
+                            <div id="studentDetailView" class="hidden">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex-grow">
+                                        <h2 class="text-2xl font-semibold text-blue-800">Detalles de <span id="selectedStudentName"></span></h2>
+                                        <p class="text-sm text-gray-500 mb-1">Email: <span id="selectedStudentEmail"></span></p>
+                                        <p class="text-sm text-gray-500 mb-1">Usuario: <strong id="selectedStudentUsername" class="text-blue-700"></strong></p>
+                                        <label class="block text-sm font-medium text-gray-700 mt-3 mb-1">Estado:</label>
+                                        <div class="mb-3 filter-btn-group" id="studentDetailStatusGroup" role="group">
+                                            <button type="button" class="filter-btn" data-status-value="activo">Activo</button>
+                                            <button type="button" class="filter-btn" data-status-value="suspendido">Suspendido</button>
+                                            <button type="button" class="filter-btn" data-status-value="inactivo">Inactivo</button>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center flex-shrink-0">
+                                        <button id="editStudentBtnInDetail" class="btn-secondary py-2 px-3 rounded-md font-semibold transition duration-150 text-sm">Editar Info</button>
+                                        <button id="deleteStudentFromDetailBtn" class="btn-danger py-2 px-3 rounded-md font-semibold transition duration-150 text-sm">Eliminar Alumno</button>
+                                    </div>
+                                </div>
+                                <div class="mb-6 p-4 border border-blue-200 rounded-lg bg-blue-50">
+                                    <h3 class="text-xl font-medium mb-3 text-blue-700">Paquetes del Alumno</h3>
+                                    <div id="currentPackageInfo"></div>
+                                    <button id="assignNewPackageBtn" class="mt-3 btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Asignar Paquete</button>
+                                </div>
+                                <div id="scheduleClassSection" class="mb-6 p-4 border border-gray-200 rounded-lg hidden">
+                                    <h3 class="text-xl font-medium mb-3 text-gray-700">Agendar Nueva Clase (Admin)</h3>
+                                    <div class="date-time-inputs">
+                                        <input type="date" id="classDateInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                                        <input type="time" id="classTimeInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                                    </div>
+                                    <div class="mb-3 mt-3">
+                                        <label for="classRepeatWeeksInput" class="block text-sm font-medium text-gray-700 mb-1">Repetir semanalmente por (opcional):</label>
+                                        <input type="number" id="classRepeatWeeksInput" min="1" placeholder="Nº de semanas" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                                        <p class="text-xs text-gray-500 mt-1">Dejar vacío o 1 para agendar una sola clase. La clase se repetirá el mismo día de la semana y hora.</p>
+                                    </div>
+                                    <button id="scheduleClassBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Agendar Clase</button>
+                                    <p id="scheduleClassError" class="text-red-500 text-sm mt-2"></p>
+                                </div>
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-medium mb-3 text-gray-700">Clases del Alumno (Admin)</h3>
+                                    <div class="mb-3 filter-btn-group" id="adminStudentClassesFilterGroup" role="group">
+                                        <button type="button" class="filter-btn active" data-filter="programadas">Programadas</button>
+                                        <button type="button" class="filter-btn" data-filter="historial">Historial</button>
+                                    </div>
+                                    <div class="overflow-x-auto"><table class="min-w-full table"><thead><tr><th>Fecha y Hora</th><th>Paquete</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="scheduledClassesList"></tbody></table></div>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-medium mb-3 text-gray-700">Historial de Todos los Paquetes</h3>
+                                    <ul id="packageHistoryList" class="space-y-3"></ul>
+                                </div>
+                            </div>
+                            <div id="noStudentSelectedViewInAlumnosView" class="text-center py-10">
+                                <p class="text-xl text-gray-500">Selecciona un alumno de la lista para ver sus detalles.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="packageTypesView" class="content-section">
+                    <h2 class="text-2xl font-semibold mb-4 text-blue-800">Administrar Paquetes</h2>
+                    <button id="openCreatePackageTypeModalBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150 mb-6">Crear Nuevo Paquete</button>
+                    <ul id="packageTypesManagementList" class="space-y-3"></ul>
+                </div>
+
+                <div id="calendarView" class="content-section">
+                    <h2 class="text-2xl font-semibold mb-4 text-blue-800">Calendario de Clases</h2>
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="md:w-1/2 lg:w-2/3">
+                            <div class="flex justify-between items-center mb-4">
+                                <button id="prevMonthBtn" class="btn-secondary py-2 px-4 rounded-md">< Anterior</button>
+                                <h3 id="calendarMonthYearDisplay" class="text-xl font-semibold text-blue-700"></h3>
+                                <button id="nextMonthBtn" class="btn-secondary py-2 px-4 rounded-md">Siguiente ></button>
+                            </div>
+                            <div id="calendarGrid" class="calendar-grid bg-white p-2 rounded shadow"></div>
+                        </div>
+                        <div class="md:w-1/2 lg:w-1/3 mt-6 md:mt-0">
+                            <h3 class="text-xl font-semibold text-blue-700 mb-1">Clases para <span id="selectedDateDisplay">Hoy</span></h3>
+                            <p class="text-sm text-gray-500 mb-4">Selecciona un día en el calendario para ver las clases.</p>
+                            <div id="dailyClassesListContainer" class="space-y-3 max-h-[60vh] overflow-y-auto p-3 bg-gray-50 rounded-md"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="studentPortalView" class="content-section">
+                    <div id="studentPortalMessageContainer" class="text-center py-10">
+                        <!-- Mensajes para el portal del estudiante se insertan aquí -->
+                    </div>
+                    <div id="studentPortalContent" class="hidden space-y-6">
+                        <div>
+                            <h2 class="text-3xl font-bold text-blue-800">Bienvenido/a a tu Portal, <span id="portalStudentName"></span>!</h2>
+                            <p class="text-md text-gray-600">Aquí puedes gestionar tus clases.</p>
+                        </div>
+                        <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg shadow">
+                            <h3 class="text-xl font-semibold mb-3 text-blue-700">Tus Paquetes</h3>
+                            <div id="portalCurrentPackageInfo"><p class="text-gray-600">No tienes un paquete activo.</p></div>
+                        </div>
+                        <div id="portalScheduleClassSection" class="p-6 bg-gray-50 border border-gray-200 rounded-lg shadow">
+                            <h3 class="text-xl font-semibold mb-3 text-gray-700">Agendar Nueva Clase</h3>
+                            <div class="date-time-inputs">
+                                <input type="date" id="portalClassDateInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                                <input type="time" id="portalClassTimeInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                            </div>
+                            <div class="mb-3 mt-3">
+                                <label for="portalClassRepeatWeeksInput" class="block text-sm font-medium text-gray-700 mb-1">Repetir semanalmente por (opcional):</label>
+                                <input type="number" id="portalClassRepeatWeeksInput" min="1" placeholder="Nº de semanas" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                                <p class="text-xs text-gray-500 mt-1">Dejar vacío o 1 para agendar una sola clase. La clase se repetirá el mismo día de la semana y hora.</p>
+                            </div>
+                            <button id="portalScheduleClassBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Agendar Mi Clase</button>
+                            <p id="portalScheduleClassError" class="text-red-500 text-sm mt-2"></p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-gray-700">Mis Clases</h3>
+                            <div class="mb-3 filter-btn-group" id="portalStudentClassesFilterGroup" role="group">
+                                <button type="button" class="filter-btn active" data-filter="programadas">Mis Próximas Clases</button>
+                                <button type="button" class="filter-btn" data-filter="historial">Mi Historial de Clases</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full table">
+                                    <thead><tr><th>Fecha y Hora</th><th>Paquete</th><th>Estado</th><th>Acción</th></tr></thead>
+                                    <tbody id="portalScheduledClassesList"><tr><td colspan="4" class="text-center py-3 text-gray-500">No tienes clases programadas.</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <div id="addStudentModal" class="modal"> <div class="modal-content"> <h3 class="text-xl font-medium mb-4 text-blue-800">Agregar Nuevo Alumno</h3> <input type="text" id="modalStudentNameInput" placeholder="Nombre del Alumno" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600 mb-3"> <input type="email" id="modalStudentEmailInput" placeholder="Email (Opcional)" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600 mb-4"> <p id="addStudentModalError" class="text-red-500 text-sm mb-3"></p> <div class="flex justify-end gap-3"> <button id="modalCancelAddStudentBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button> <button id="modalAddStudentBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Guardar Alumno</button> </div> </div> </div>
+        <div id="assignPackageModal" class="modal"> <div class="modal-content"> <h3 class="text-xl font-semibold mb-4 text-blue-800">Asignar Nuevo Paquete</h3> <select id="packageTypeSelect" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600 mb-4"></select> <div class="flex justify-end gap-3"> <button id="cancelAssignPackageBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button> <button id="confirmAssignPackageBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Confirmar</button> </div> </div> </div>
+        <div id="packageTypeModal" class="modal"> <div class="modal-content"> <h3 id="packageTypeModalTitle" class="text-xl font-semibold mb-4 text-blue-800"></h3> <input type="hidden" id="editingPackageTypeId"> <div class="mb-3"> <label for="packageTypeNameInput" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Paquete</label> <input type="text" id="packageTypeNameInput" placeholder="Ej: Paquete Flexible" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600"> </div> <div class="mb-3"> <label for="packageTypeClassesInput" class="block text-sm font-medium text-gray-700 mb-1">Número de Clases</label> <input type="number" id="packageTypeClassesInput" placeholder="Ej: 10" min="1" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600"> </div> <div class="mb-4"> <label for="packageTypeDurationInput" class="block text-sm font-medium text-gray-700 mb-1">Duración (días)</label> <input type="number" id="packageTypeDurationInput" placeholder="Ej: 30" min="1" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600"> </div> <p id="packageTypeFormError" class="text-red-500 text-sm mb-3"></p> <div class="flex justify-end gap-3"> <button id="cancelPackageTypeBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button> <button id="savePackageTypeBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Guardar Paquete</button> </div> </div> </div>
+        <div id="messageModal" class="modal"> <div class="modal-content"> <h3 id="messageModalTitle" class="text-xl font-semibold mb-4"></h3> <p id="messageModalText" class="mb-4"></p> <div class="flex justify-end"> <button id="messageModalOkBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">OK</button> </div> </div> </div>
+        <div id="editClassModal" class="modal"> <div class="modal-content"> <h3 class="text-xl font-semibold mb-4 text-blue-800">Editar Clase Programada (Admin)</h3> <input type="hidden" id="editingClassId"> <input type="hidden" id="editingClassPackageId"> <div class="mb-3"> <label for="editClassDateInput" class="block text-sm font-medium text-gray-700 mb-1">Nueva Fecha</label> <input type="date" id="editClassDateInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600"> </div> <div class="mb-4"> <label for="editClassTimeInput" class="block text-sm font-medium text-gray-700 mb-1">Nueva Hora</label> <input type="time" id="editClassTimeInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600"> </div> <p id="editClassError" class="text-red-500 text-sm mb-3"></p> <div class="flex justify-end gap-3"> <button id="cancelEditClassBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button> <button id="saveEditClassBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Guardar Cambios</button> </div> </div> </div>
+        <div id="confirmationModal" class="modal"> <div class="modal-content"> <h3 id="confirmationModalTitle" class="text-xl font-semibold mb-4 text-blue-800"></h3> <p id="confirmationModalText" class="mb-6 text-gray-600"></p> <div class="flex justify-end gap-3"> <button id="confirmationModalCancelBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button> <button id="confirmationModalConfirmBtn" class="btn-danger py-2 px-4 rounded-md font-semibold transition duration-150">Confirmar</button> </div> </div> </div>
+
+        <div id="portalEditClassModal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-semibold mb-4 text-blue-800">Editar Mi Clase Programada</h3>
+                <input type="hidden" id="portalEditingClassId">
+                <input type="hidden" id="portalEditingClassPackageId">
+                <div class="mb-3">
+                    <label for="portalEditClassDateInput" class="block text-sm font-medium text-gray-700 mb-1">Nueva Fecha</label>
+                    <input type="date" id="portalEditClassDateInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <div class="mb-4">
+                    <label for="portalEditClassTimeInput" class="block text-sm font-medium text-gray-700 mb-1">Nueva Hora</label>
+                    <input type="time" id="portalEditClassTimeInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <p id="portalEditClassError" class="text-red-500 text-sm mb-3"></p>
+                <div class="flex justify-end gap-3">
+                    <button id="portalCancelEditClassBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button>
+                    <button id="portalSaveEditClassBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="editStudentModal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-medium mb-4 text-blue-800">Editar Información del Alumno</h3>
+                <input type="hidden" id="editingStudentId">
+                <div class="mb-3">
+                    <label for="modalEditStudentNameInput" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Alumno</label>
+                    <input type="text" id="modalEditStudentNameInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <div class="mb-4">
+                    <label for="modalEditStudentEmailInput" class="block text-sm font-medium text-gray-700 mb-1">Email (Opcional)</label>
+                    <input type="email" id="modalEditStudentEmailInput" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <p id="editStudentModalError" class="text-red-500 text-sm mb-3"></p>
+                <div class="flex justify-end gap-3">
+                    <button id="modalCancelEditStudentBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button>
+                    <button id="modalSaveEditStudentBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="extendPackageExpiryModal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-medium mb-4 text-blue-800">Extender Vigencia de Paquete</h3>
+                <input type="hidden" id="extendingPackageIdForStudent">
+                <input type="hidden" id="extendingPackageStudentId">
+                <div class="mb-3">
+                    <p>Paquete: <strong id="extendModalPackageName"></strong></p>
+                    <p>Expiración Actual: <span id="extendModalCurrentExpiry"></span></p>
+                </div>
+                <div class="mb-3">
+                    <label for="extendDaysInput" class="block text-sm font-medium text-gray-700 mb-1">Días Adicionales a Extender</label>
+                    <input type="number" id="extendDaysInput" min="1" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-600 focus:border-blue-600">
+                </div>
+                <div class="mb-4">
+                    <p>Nueva Fecha de Expiración: <strong id="extendModalNewExpiryPreview"></strong></p>
+                </div>
+                <p id="extendPackageExpiryError" class="text-red-500 text-sm mb-3"></p>
+                <div class="flex justify-end gap-3">
+                    <button id="cancelExtendPackageExpiryBtn" class="btn-secondary py-2 px-4 rounded-md font-semibold transition duration-150">Cancelar</button>
+                    <button id="confirmExtendPackageExpiryBtn" class="btn-primary py-2 px-4 rounded-md font-semibold transition duration-150">Confirmar Extensión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script principal de la aplicación -->
+    <script src="script.js" defer></script>
+</body>
+</html>
